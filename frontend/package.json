@@ -1,0 +1,24 @@
+{
+  "name": "frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/speech": "^4.1.0",
+    "alawmulaw": "^6.0.0",
+    "body-parser": "^1.19.0",
+    "debug": "^4.1.1",
+    "express": "^4.17.1",
+    "heapdump": "^0.3.15",
+    "ioredis": "^4.17.3",
+    "rxjs": "^6.5.5",
+    "rxjs-compat": "^6.5.5",
+    "supports-color": "^7.1.0",
+    "ws": "^7.3.0"
+  }
+}

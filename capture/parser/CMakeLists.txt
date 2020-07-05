@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.1)
+project(parser CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-O2")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../libtins/include)
+add_library(parser STATIC parser.cpp)

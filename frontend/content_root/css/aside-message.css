@@ -1,0 +1,72 @@
+.aside-message .message-section {
+    border: 1px solid #dddddd;
+}
+
+.aside-message .message-header {
+    background: #f5f3f3 none repeat scroll 0 0;
+    float: left;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 18px 10px;
+    width: 100%;
+}
+
+.aside-message .message-chat-area {
+    float: left;
+    height: 300px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    width: 100%;
+}
+
+.aside-message .message-chat-area li {
+    padding: 14px 14px 0;
+}
+.aside-message .message-chat-area li:last-child {
+    padding-bottom: 10px;
+}
+
+.aside-message .message-in .message-icon {
+    float: left !important;
+}
+
+.aside-message .message-in .message-chat-body {
+    margin-left: 40px;
+}
+
+.aside-message .message-out .message-icon {
+    float: right !important;
+}
+
+.aside-message .message-out .message-chat-body {
+    margin-left: 0;
+    margin-right: 40px;
+}
+
+.aside-message .message-chat-body p {
+    background: #fbf9fa none repeat scroll 0 0;
+    padding: 10px;
+}
+
+.aside-message .message-footer {
+    background: #f5f3f3 none repeat scroll 0 0;
+    float: left;
+    padding: 15px;
+    width: 100%;
+}
+
+.aside-message .message-footer .chat-bottom {
+    float: left;
+    margin-top: 13px;
+    width: 100%;
+}
+
+.aside-message .message-footer .chat-bottom .message-speaker {
+    color: #606060;
+}
+
+.aside-message .message-spinner {
+    vertical-align: unset !important;
+    width: 0.8rem !important;
+    height: 0.8rem !important;
+}
