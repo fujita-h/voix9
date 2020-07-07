@@ -5,11 +5,11 @@ PC等でリアルタイムに再生および会話の内容をテキスト化し
 
 ## 構成
 
-voix9 は capture と frontend の2つで構成されます。
+voix9 は capture と webapi の2つで構成されます。
 データストアには Redis を使用します。
 
 capture はIP電話での通話内容を、ネットワークからキャプチャーし、Redisに保存します。
-frontend は capture が Redis に保存したデータをPC等に配信します。
+webapi は capture が Redis に保存したデータをPC等に配信します。
 
 ## 必要なソフトウェア
 
