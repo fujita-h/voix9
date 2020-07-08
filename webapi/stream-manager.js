@@ -11,28 +11,30 @@ function StreamManager(redisSettings, enableGoogleSpeech = false) {
 
     // Redis へ接続
     this.redisStream = new RedisStream(redisSettings.host, redisSettings.port, redisSettings.db);
-
-    // Google Speech to Text を IN/OUT の2チャンネル分用意
-    this.googleSpeech_IN = enableGoogleSpeech ? new GoogleSpeech() : null;
-    this.googleSpeech_OUT = enableGoogleSpeech ? new GoogleSpeech() : null;
-
+  
     // キャッシュ
-    this.cache = {}
+    this.streamCache = {}
+    this.googleSpeechCache = {}
 }
 
 
 StreamManager.prototype.observeAllStream = function (key) {
     // すでに作成済の Obervable に対するリクエストだったら、作ったものを返す。
-    if (this.cache[key]) return this.cache[key]
+    if (this.streamCache[key]) return this.streamCache[key]
+    if (this.enableGoogleSpeech) {
+        // Google Speech to Text を IN/OUT の2チャンネル分用意
+        this.googleSpeechCache[key] = { in: new GoogleSpeech(), out: new GoogleSpeech() }
+    }
 
-    return this.cache[key] = Rx.Observable.of(null)
+    return this.streamCache[key] = Rx.Observable.of(null)
         // ネットワークパケットのストリームをマージ
         .merge(this.observeNetworkPacketStream(key))
         // Google Speech の結果ストリームをマージ
-        .merge(this.observeGoogleSpeechStream())
+        .merge(this.observeGoogleSpeechStream(key))
         .filter(message => message) // null 除去
         .finally(() => {
-            delete this.cache[key]
+            delete this.streamCache[key]
+            delete this.googleSpeechCache[key]
         })
         .publish() // Hot Observable 化
         .refCount() // 最初の subscriber が現れたら放流開始、subscriber が誰もいなくなったら放流停止
@@ -86,10 +88,10 @@ StreamManager.prototype.observeNetworkPacketStream = function (key) {
                 // Google Speech to Text に RTP ペイロードを送る
                 if (this.enableGoogleSpeech && rtp_payload) {
                     // IN/OUT の向きを確認して、それぞれの Google Speech へ投げる
-                    if (this.googleSpeech_IN && data.dst_addr && key.includes(data.dst_addr)) {
-                        this.googleSpeech_IN.sendChunk(rtp_payload)
-                    } else if (this.googleSpeech_OUT && data.src_addr && key.includes(data.src_addr)) {
-                        this.googleSpeech_OUT.sendChunk(rtp_payload)
+                    if (this.googleSpeechCache[key].in && data.dst_addr && key.includes(data.dst_addr)) {
+                        this.googleSpeechCache[key].in.sendChunk(rtp_payload)
+                    } else if (this.googleSpeechCache[key].out && data.src_addr && key.includes(data.src_addr)) {
+                        this.googleSpeechCache[key].out.sendChunk(rtp_payload)
                     }
                 }
             }
@@ -97,12 +99,12 @@ StreamManager.prototype.observeNetworkPacketStream = function (key) {
 }
 
 
-StreamManager.prototype.observeGoogleSpeechStream = function () {
+StreamManager.prototype.observeGoogleSpeechStream = function (key) {
     // Google Speech が有効な場合
-    if (this.googleSpeech_IN && this.googleSpeech_OUT) {
+    if (this.googleSpeechCache[key].in && this.googleSpeechCache[key].out) {
         return Rx.Observable.of(null)
             // IN 向きのテキスト化結果をマージ
-            .merge(Rx.Observable.fromEvent(this.googleSpeech_IN, "data")
+            .merge(Rx.Observable.fromEvent(this.googleSpeechCache[key].in, "data")
                 .filter(message => message)
                 .map(message => {
                     // オブジェクト整形
@@ -112,7 +114,7 @@ StreamManager.prototype.observeGoogleSpeechStream = function () {
                     return { eventType, timestamp, data }
                 }))
             // OUT 向きのテキスト化結果をマージ
-            .merge(Rx.Observable.fromEvent(this.googleSpeech_OUT, "data")
+            .merge(Rx.Observable.fromEvent(this.googleSpeechCache[key].out, "data")
                 .filter(message => message)
                 .map(message => {
                     // オブジェクト整形
