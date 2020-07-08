@@ -4,6 +4,12 @@ var vueAsideMessage;
 var ws
 var player = new PlayRtp(0, 8000, 2, false)
 
+setInterval(() => {
+    if (ws && ws.readyState == ws.OPEN) {
+        ws.send('ping')
+    }
+}, 5000);
+
 $(document).ready(function () {
     vueStreamList = new Vue({
         el: '#stream-list',
@@ -86,9 +92,13 @@ const openMessageBox = (key) => {
         console.log("onerror:", wserror)
     })
     ws.onmessage = ((wsevent) => {
-        let json = wsevent.data
-
-        let obj = JSON.parse(json)
+        if (wsevent.data === 'pong') return;
+        try {
+            var obj = JSON.parse(wsevent.data)
+        } catch (err) {
+            console.log(err);
+            return;
+        }
         let timestamp = obj.timestamp
         let eventType = obj.eventType
         let data = obj.data

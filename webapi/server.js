@@ -49,6 +49,12 @@ Server.prototype.start = function () {
         .flatMap(event => {
             let websocket = event[0]
             let request = event[1]
+            
+            websocket.on('message', (msg) => {
+                if(msg === 'ping') {
+                    websocket.send('pong')
+                }
+            })
 
             const disconnect$ = Rx.Observable.fromEvent(websocket, 'close')
                 .do(() => {
