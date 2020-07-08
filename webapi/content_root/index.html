@@ -90,9 +90,9 @@
     </aside>
     <main>
         <div class="container-fluid mt-3">
-            <div class="row ml-1">
+            <div class="row ml-1" id="stream-list">
                 <div v-if="items && items.length > 0" class="col-12">
-                    <div class="list-group" style="max-width: 320px;" id="stream-list">
+                    <div class="list-group" style="max-width: 320px;">
                         <a v-for="item in items" href="javascript:void(0);"
                             v-bind:onclick="'openMessageBox(&quot;'+ item.key  + '&quot;)'"
                             class="list-group-item list-group-item-action">
