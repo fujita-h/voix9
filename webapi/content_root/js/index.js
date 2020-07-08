@@ -26,10 +26,13 @@ $(document).ready(function () {
 const updateStreamList = (vueStreamList) => {
     getStreamList()
         .then((streamList) => {
-            Promise.allSettled(streamList.data.map(x => getStreamInfo(x.key)))
-                .then((streamInfos) => {
-                    vueStreamList.items = streamInfos.filter(x => x.status == "fulfilled").map(x => x.value.data)
-                })
+            let items = []
+            for (var i in streamList.data) {
+                getStreamInfo(streamList.data[i].key)
+                    .then((data) => { items.push(data.data) })
+                    .catch((err) => { })
+            }
+            vueStreamList.items = items;
         })
 
 }
