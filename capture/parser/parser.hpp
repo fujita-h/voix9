@@ -2,6 +2,7 @@
 #define INCLUDE_GUARD_PARSER_HPP
 
 #include <iostream>
+#include <unordered_map>
 #include <vector>
 #include <tins/tins.h>
 #include "safe-queue.hpp"
@@ -59,11 +60,18 @@ public:
 
     } dataset_t;
 
+    typedef struct RtpSessionInfo {
+        std::string sequence = "";
+        long timestamp = 0;
+    } rtp_session_info_t;
+
     Parser(config_t &c, SafeQueue<dataset_t> *s);
     static bool parse(Tins::PDU &pdu);
 
 private:
     config_t config;
+    long last_rtp_session_checked;
+    std::unordered_map<std::string, rtp_session_info_t> rtp_sessions;
     SafeQueue<dataset_t> *safe_queue;
     static Parser *thisPtr;
     static bool try_parse_rtp(const Tins::UDP *p, dataset_rtp_t &d);

@@ -1,4 +1,5 @@
 #include "parser.hpp"
+#include <cstdlib>
 #include <iomanip>
 #include <sstream>
 #include <queue>
@@ -11,6 +12,7 @@ Parser::Parser(config_t &c, SafeQueue<dataset_t> *s)
     Parser::thisPtr = this;
     config = c;
     safe_queue = s;
+    last_rtp_session_checked = 0;
 }
 
 bool Parser::parse(Tins::PDU &pdu)
@@ -58,11 +60,63 @@ bool Parser::parse(Tins::PDU &pdu)
         dataset.dst_addr = ipv6_p->dst_addr().to_string();
     }
 
-    if (dataset.type != "")
+    if (dataset.type == "RTP")
+    {
+        auto now = std::time(nullptr);
+        std::string rtp_session_key = dataset.src_addr + ":" + dataset.src_port + "/" + dataset.rtp.rtp_ssrc;
+
+        bool isValid = true;
+        auto itr = _this->rtp_sessions.find(rtp_session_key);
+        if (itr != _this->rtp_sessions.end())
+        {
+            if (std::abs(itr->second.timestamp - now) < 6)
+            {
+                long diff = std::strtol(dataset.rtp.rtp_sequence_number.c_str(), nullptr, 10) - std::strtol(itr->second.sequence.c_str(), nullptr, 10);
+                if (diff <= 0 && diff >= -20)
+                {
+                    isValid = false;
+                }
+            }
+        }
+
+        if (isValid == true)
+        {
+        _this->safe_queue->push(dataset);
+            _this->rtp_sessions[rtp_session_key] = {dataset.rtp.rtp_sequence_number, now};
+            std::cout << dataset.type << " "
+                      << dataset.src_addr + ":" + dataset.src_port
+                      << " -> "
+                      << dataset.dst_addr + ":" + dataset.dst_port
+                      << " "
+                      << dataset.rtp.rtp_sequence_number
+                      << std::endl;
+        }
+
+        if (now - _this->last_rtp_session_checked > 10)
+        {
+            for (auto itr = _this->rtp_sessions.begin(); itr != _this->rtp_sessions.end(); itr)
+            {
+                if (std::abs(itr->second.timestamp - now) > 10)
+                {
+                    itr = _this->rtp_sessions.erase(itr);
+                    std::cout << "delete" << std::endl;
+    }
+                else
+                {
+                    ++itr;
+                }
+            }
+            _this->last_rtp_session_checked = now;
+        }
+    }
+    else if (dataset.type != "")
     {
         _this->safe_queue->push(dataset);
-        std::cout << dataset.type << ":" << ":" << dataset.rtp.rtp_sequence_number << ":" << dataset.rtp.rtp_payload << std::endl;
-
+        std::cout << dataset.type << " "
+                  << dataset.src_addr + ":" + dataset.src_port
+                  << " -> "
+                  << dataset.dst_addr + ":" + dataset.dst_port
+                  << std::endl;
     }
 
     return true;
