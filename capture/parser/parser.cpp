@@ -126,6 +126,12 @@ bool Parser::try_parse_rtp(const Tins::UDP *p, dataset_rtp_t &d)
     const uint32_t &rtp_timestamp = payload[4] << 24 | payload[5] << 16 | payload[6] << 8 | payload[7];
     const uint32_t &rtp_ssrc = payload[8] << 24 | payload[9] << 16 | payload[10] << 8 | payload[11];
 
+    if (rtp_payload_type >= 72 && rtp_payload_type <= 76)
+    {
+        // rtp_payload_type: 72 - 76 is not RTP. This is RTCP.
+        return false;
+    }
+
     uint8_t rtp_padding_length = 0;
     if (rtp_padding == 1)
     {
