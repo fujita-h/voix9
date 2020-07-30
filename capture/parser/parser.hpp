@@ -35,6 +35,12 @@ public:
         std::string payload = "";
     } datagram_t;
 
+    typedef struct DatasetRtcp
+    {
+        std::string rtcp_type = "";
+        std::string rtcp_ssrc = "";
+    } dataset_rtcp_t;
+
     typedef struct DatasetRtp
     {
         std::string rtp_version = "";
@@ -74,6 +80,7 @@ private:
     std::unordered_map<std::string, rtp_session_info_t> rtp_sessions;
     SafeQueue<dataset_t> *safe_queue;
     static Parser *thisPtr;
+    static uint8_t try_parse_rtcp(const Tins::UDP *p, std::vector<dataset_rtcp_t> &d);
     static bool try_parse_rtp(const Tins::UDP *p, dataset_rtp_t &d);
     static std::string pdutype_to_string(const Tins::PDU::PDUType p);
     static std::string uint8_vector_to_base64_string(const std::vector<uint8_t> &v);

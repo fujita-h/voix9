@@ -36,11 +36,15 @@ bool Parser::parse(Tins::PDU &pdu)
         dataset.dst_port = std::to_string(udp_p->dport());
 
         dataset_rtp_t dataset_rtp;
-        bool x = try_parse_rtp(udp_p, dataset_rtp);
-        if (x == true)
+        std::vector<dataset_rtcp_t> vec_dataset_rtcp = {};
+        if (try_parse_rtp(udp_p, dataset_rtp) == true)
         {
             dataset.type = "RTP";
             dataset.rtp = dataset_rtp;
+        }
+        else if (try_parse_rtcp(udp_p, vec_dataset_rtcp) > 0)
+        {
+            dataset.type = "RTCP";
         }
     }
 
@@ -81,7 +85,7 @@ bool Parser::parse(Tins::PDU &pdu)
 
         if (isValid == true)
         {
-        _this->safe_queue->push(dataset);
+            _this->safe_queue->push(dataset);
             _this->rtp_sessions[rtp_session_key] = {dataset.rtp.rtp_sequence_number, now};
             std::cout << dataset.type << " "
                       << dataset.src_addr + ":" + dataset.src_port
@@ -100,7 +104,7 @@ bool Parser::parse(Tins::PDU &pdu)
                 {
                     itr = _this->rtp_sessions.erase(itr);
                     std::cout << "delete" << std::endl;
-    }
+                }
                 else
                 {
                     ++itr;
@@ -120,6 +124,117 @@ bool Parser::parse(Tins::PDU &pdu)
     }
 
     return true;
+}
+
+uint8_t Parser::try_parse_rtcp(const Tins::UDP *p, std::vector<dataset_rtcp_t> &d)
+{
+    uint8_t result = 0;
+    const uint32_t &udp_payload_size = p->find_pdu<Tins::RawPDU>()->payload_size();
+    const std::vector<uint8_t> &payload = p->find_pdu<Tins::RawPDU>()->payload();
+    uint32_t cur_pos = 0;
+
+    while (cur_pos + 4 < udp_payload_size)
+    {
+        const uint8_t &rtcp_version = (payload[cur_pos + 0] & 0b11000000) >> 6;
+        const uint8_t &rtcp_padding = (payload[cur_pos + 0] & 0b00100000) >> 5;
+        const uint8_t &rtcp_report_count = payload[cur_pos + 0] & 0b00011111;
+        const uint8_t &rtcp_packet_type = payload[cur_pos + 1];
+        const uint16_t &rtcp_length = payload[cur_pos + 2] << 8 | payload[cur_pos + 3];
+        uint32_t rtcp_ssrc = 0;
+
+        if (rtcp_version != 2)
+        {
+            break;
+        }
+
+        if (rtcp_packet_type == 200)
+        {
+            // sender report
+            dataset_rtcp_t rtcp;
+            rtcp.rtcp_type = "SR";
+
+            if (udp_payload_size < cur_pos + rtcp_length)
+            {
+                break;
+            }
+
+            rtcp_ssrc = payload[cur_pos + 4] << 24 | payload[cur_pos + 5] << 16 | payload[cur_pos + 6] << 8 | payload[cur_pos + 7];
+            rtcp.rtcp_ssrc = std::to_string(rtcp_ssrc);
+
+            d.push_back(rtcp);
+            result++;
+            cur_pos = cur_pos + 4 * (rtcp_length + 1);
+        }
+        else if (rtcp_packet_type == 201)
+        {
+            // receiver report
+            dataset_rtcp_t rtcp;
+            rtcp.rtcp_type = "RR";
+            if (udp_payload_size < cur_pos + rtcp_length)
+            {
+                break;
+            }
+
+            rtcp_ssrc = payload[cur_pos + 4] << 24 | payload[cur_pos + 5] << 16 | payload[cur_pos + 6] << 8 | payload[cur_pos + 7];
+            rtcp.rtcp_ssrc = std::to_string(rtcp_ssrc);
+
+            d.push_back(rtcp);
+            result++;
+            cur_pos = cur_pos + 4 * (rtcp_length + 1);
+        }
+        else if (rtcp_packet_type == 202)
+        {
+            // SDES
+            dataset_rtcp_t rtcp;
+            rtcp.rtcp_type = "SDES";
+            uint32_t sdes_pos = cur_pos + 4;
+
+            // MORE DEBUG REQUIRED!
+            for (int i = 0; i < rtcp_report_count; i++)
+            {
+                uint32_t sdes_ssrc = payload[sdes_pos] << 24 | payload[sdes_pos + 1] << 16 | payload[sdes_pos + 2] << 8 | payload[sdes_pos + 3];
+                sdes_pos += 4;
+                uint8_t sdes_type = payload[sdes_pos];
+                while (sdes_type != 0 && sdes_pos < udp_payload_size)
+                {
+                    std::cout << "SDES_TYPE: " << std::to_string(sdes_type) << std::endl;
+                    uint8_t sdes_len = payload[sdes_pos + 1];
+                    sdes_pos = sdes_pos + 2 + sdes_len;
+                    sdes_type = payload[sdes_pos];
+                }
+            }
+
+            d.push_back(rtcp);
+            result++;
+            cur_pos = cur_pos + 4 * (rtcp_length + 1);
+        }
+        else if (rtcp_packet_type == 203)
+        {
+            // goodbye
+            dataset_rtcp_t rtcp;
+            rtcp.rtcp_type = "GOODBYE";
+
+            d.push_back(rtcp);
+            result++;
+            cur_pos = cur_pos + 4 * (rtcp_length + 1);
+        }
+        else if (rtcp_packet_type == 204)
+        {
+            // app
+            dataset_rtcp_t rtcp;
+            rtcp.rtcp_type = "APP";
+
+            d.push_back(rtcp);
+            result++;
+            cur_pos = cur_pos + 4 * (rtcp_length + 1);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    return result;
 }
 
 bool Parser::try_parse_rtp(const Tins::UDP *p, dataset_rtp_t &d)
